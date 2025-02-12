@@ -8,6 +8,7 @@ import { formatMessageTime } from "../lib/utils";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data"; // Emoji data
 import { Smile } from "lucide-react";
+// import { useNotificationStore } from "../store/useNotificationStore";
 
 const ChatContainer = () => {
   const {
@@ -24,6 +25,7 @@ const ChatContainer = () => {
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
   const contextMenuRef = useRef(null); // Add ref for context menu
+  // const { markChatNotificationsAsRead } = useNotificationStore();
 
   const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
   const [activeMessageId, setActiveMessageId] = useState(null);
@@ -33,14 +35,19 @@ const ChatContainer = () => {
     x: 0,
     y: 0,
     messageId: null,
-    senderId: null
+    senderId: null,
   });
 
   useEffect(() => {
     getMessages(selectedUser._id);
     subscribeToMessages();
     return () => unsubscribeFromMessages();
-  }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages]);
+  }, [
+    selectedUser._id,
+    getMessages,
+    subscribeToMessages,
+    unsubscribeFromMessages,
+  ]);
 
   useEffect(() => {
     if (messageEndRef.current && messages) {
@@ -51,17 +58,20 @@ const ChatContainer = () => {
   // Added useEffect to listen for clicks outside of the context menu
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
+      if (
+        contextMenuRef.current &&
+        !contextMenuRef.current.contains(e.target)
+      ) {
         setContextMenu((prevContextMenu) => ({
           ...prevContextMenu,
-          visible: false
+          visible: false,
         }));
       }
     };
 
     // Add event listener on mount
     document.addEventListener("mousedown", handleClickOutside);
-    
+
     // Cleanup the event listener on unmount
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -70,7 +80,7 @@ const ChatContainer = () => {
 
   const handleRightClick = (e, messageId, messageText, senderId) => {
     e.preventDefault();
-  
+
     // Show the context menu only if the clicked message is from the sender (authUser)
     if (senderId === authUser._id) {
       setContextMenu({
@@ -78,10 +88,10 @@ const ChatContainer = () => {
         x: e.clientX,
         y: e.clientY,
         messageId: messageId,
-        senderId: senderId
+        senderId: senderId,
       });
       setEditedMessage(messageText); // Prepopulate the edit input with the message text
-      console.log("this is context menu", contextMenu)
+      console.log("this is context menu", contextMenu);
     }
   };
 
@@ -123,9 +133,13 @@ const ChatContainer = () => {
         {messages.map((message) => (
           <div
             key={message._id}
-            className={`chat ${message.senderId === authUser._id ? "chat-end" : "chat-start"}`}
+            className={`chat ${
+              message.senderId === authUser._id ? "chat-end" : "chat-start"
+            }`}
             ref={messageEndRef}
-            onContextMenu={(e) => handleRightClick(e, message._id, message.text, message.senderId)} // Pass senderId here
+            onContextMenu={(e) =>
+              handleRightClick(e, message._id, message.text, message.senderId)
+            } // Pass senderId here
           >
             <div className="chat-image avatar">
               <div className="size-10 rounded-full border">
@@ -230,7 +244,9 @@ const ChatContainer = () => {
             <button
               onClick={() => {
                 setActiveMessageId(contextMenu.messageId); // Set message ID for editing
-                setEditedMessage(messages.find(msg => msg._id === contextMenu.messageId).text); // Prepopulate input
+                setEditedMessage(
+                  messages.find((msg) => msg._id === contextMenu.messageId).text
+                ); // Prepopulate input
               }}
               className="w-full text-left text-sm text-blue-600"
             >

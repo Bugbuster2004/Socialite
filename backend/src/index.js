@@ -9,6 +9,7 @@ import { connectDB } from "./lib/db.js";
 
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
+import notificationRoutes from "./routes/notification.route.js";
 import { app, server } from "./lib/socket.js";
 
 dotenv.config();
@@ -16,8 +17,8 @@ dotenv.config();
 const PORT = process.env.PORT;
 const __dirname = path.resolve();
 
-app.use(express.json());// this helps to extract the json data from req.body
-app.use(cookieParser());// it will aloow to parse the cookies that is we can take the value out from jwt
+app.use(express.json()); // this helps to extract the json data from req.body
+app.use(cookieParser()); // it will aloow to parse the cookies that is we can take the value out from jwt
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -27,6 +28,7 @@ app.use(
 
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 if (process.env.NODE_ENV === "production") {
   const staticPath = path.join(__dirname, "frontend/vite-project/dist");
@@ -43,8 +45,10 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-console.log("Static files served from:", path.join(__dirname, "frontend/vite-project/dist"));
-
+console.log(
+  "Static files served from:",
+  path.join(__dirname, "frontend/vite-project/dist")
+);
 
 server.listen(PORT, () => {
   console.log("server is running on PORT:" + PORT);

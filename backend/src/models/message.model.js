@@ -18,8 +18,8 @@ const messageSchema = new mongoose.Schema(
     image: {
       type: String,
     },
-    editedAt: { type: Date }, 
 
+    editedAt: { type: Date },
   },
   { timestamps: true }
 );

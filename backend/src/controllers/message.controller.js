@@ -1,5 +1,6 @@
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
+import Notification from "../models/notification.model.js";
 
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
@@ -7,7 +8,9 @@ import { getReceiverSocketId, io } from "../lib/socket.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
-    const filteredUsers = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
+    const filteredUsers = await User.find({
+      _id: { $ne: loggedInUserId },
+    }).select("-password");
 
     res.status(200).json(filteredUsers);
   } catch (error) {
@@ -37,13 +40,13 @@ export const getMessages = async (req, res) => {
 
 export const sendMessage = async (req, res) => {
   try {
-    const { text, image } = req.body;
+    const { text, image, audio } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
+    // console.log(req.user);
 
     let imageUrl;
     if (image) {
-      // Upload base64 image to cloudinary
       const uploadResponse = await cloudinary.uploader.upload(image);
       imageUrl = uploadResponse.secure_url;
     }
@@ -57,19 +60,27 @@ export const sendMessage = async (req, res) => {
 
     await newMessage.save();
 
+    // Save notification in DB
+    const notification = new Notification({
+      userId: receiverId, // Receiver of the message should get the notification
+      message: `New message from ${req.user.fullName}`,
+    });
+
+    await notification.save();
+
+    // Real-time update for receiver
     const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
+      io.to(receiverSocketId).emit("new_notification", notification);
     }
 
     res.status(201).json(newMessage);
   } catch (error) {
-    console.log("Error in sendMessage controller: ", error.message);
+    console.error("Error in sendMessage controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
-
 export const editMessage = async (req, res) => {
   try {
     const { id: messageId } = req.params;
@@ -84,7 +95,9 @@ export const editMessage = async (req, res) => {
       return res.status(404).json({ error: "Message not found" });
     }
     if (message.senderId.toString() !== userId.toString()) {
-      return res.status(403).json({ error: "You are not allowed to edit this message" });
+      return res
+        .status(403)
+        .json({ error: "You are not allowed to edit this message" });
     }
 
     // Update the message text
@@ -105,7 +118,6 @@ export const editMessage = async (req, res) => {
   }
 };
 
-
 export const deleteMessage = async (req, res) => {
   try {
     const { id: messageId } = req.params;
@@ -119,7 +131,9 @@ export const deleteMessage = async (req, res) => {
       return res.status(404).json({ error: "Message not found" });
     }
     if (message.senderId.toString() !== userId.toString()) {
-      return res.status(403).json({ error: "You are not allowed to delete this message" });
+      return res
+        .status(403)
+        .json({ error: "You are not allowed to delete this message" });
     }
 
     // Delete the message
@@ -134,6 +148,26 @@ export const deleteMessage = async (req, res) => {
     res.status(200).json({ message: "Message deleted successfully" });
   } catch (error) {
     console.error("Error in deleteMessage controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const getChatMedia = async (req, res) => {
+  try {
+    const { id: userToChatId } = req.params;
+    const myId = req.user._id;
+
+    // Fetch only messages that have images
+    const mediaMessages = await Message.find({
+      $or: [
+        { senderId: myId, receiverId: userToChatId, image: { $ne: null } },
+        { senderId: userToChatId, receiverId: myId, image: { $ne: null } },
+      ],
+    }).select("image createdAt");
+
+    res.status(200).json(mediaMessages);
+  } catch (error) {
+    console.error("Error in getChatMedia controller:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };

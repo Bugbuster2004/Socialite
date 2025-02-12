@@ -5,6 +5,7 @@ import { useAuthStore } from "./useAuthStore";
 
 export const useChatStore = create((set, get) => ({
   messages: [],
+  chatMedia: [],
   users: [],
   selectedUser: null,
   isUsersLoading: false,
@@ -36,50 +37,70 @@ export const useChatStore = create((set, get) => ({
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
     try {
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+      const res = await axiosInstance.post(
+        `/messages/send/${selectedUser._id}`,
+        messageData
+      );
       set({ messages: [...messages, res.data] });
     } catch (error) {
       toast.error(error.response.data.message);
     }
   },
-// Edit Message
-editMessage: async (messageId, updatedText) => {
-  const { messages } = get();
-  try {
-    // Send the edit request to the server
-    const res = await axiosInstance.patch(`/messages/${messageId}/edit`, { text: updatedText });
+  // Edit Message
+  editMessage: async (messageId, updatedText) => {
+    const { messages } = get();
+    try {
+      // Send the edit request to the server
+      const res = await axiosInstance.patch(`/messages/${messageId}/edit`, {
+        text: updatedText,
+      });
 
-    // Update the message in the store
-    set({
-      messages: messages.map((message) =>
-        message._id === messageId ? { ...message, text: updatedText, editedAt: res.data.editedAt } : message
-      ),
-    });
+      // Update the message in the store
+      set({
+        messages: messages.map((message) =>
+          message._id === messageId
+            ? { ...message, text: updatedText, editedAt: res.data.editedAt }
+            : message
+        ),
+      });
 
-    toast.success("Message edited successfully");
-  } catch (error) {
-    toast.error(error.response.data.message);
-  }
-},
+      toast.success("Message edited successfully");
+    } catch (error) {
+      toast.error(error.response.data.message);
+    }
+  },
 
-// Delete Message
-deleteMessage: async (messageId) => {
-  const { messages } = get();
-  try {
-    // Send the delete request to the server
-    await axiosInstance.delete(`/messages/${messageId}`);
+  // Delete Message
+  deleteMessage: async (messageId) => {
+    const { messages } = get();
+    try {
+      // Send the delete request to the server
+      await axiosInstance.delete(`/messages/${messageId}`);
 
-    // Remove the message from the store
-    set({
-      messages: messages.filter((message) => message._id !== messageId),
-    });
+      // Remove the message from the store
+      set({
+        messages: messages.filter((message) => message._id !== messageId),
+      });
 
-    toast.success("Message deleted successfully");
-  } catch (error) {
-    toast.error(error.response.data.message);
-  }
-},
+      toast.success("Message deleted successfully");
+    } catch (error) {
+      toast.error(error.response.data.message);
+    }
+  },
+  //fetch chat media from the chat
+  fetchChatMedia: async () => {
+    const { selectedUser } = get();
+    if (!selectedUser) return;
 
+    try {
+      const res = await axiosInstance.get(
+        `/messages/media/${selectedUser._id}`
+      );
+      set({ chatMedia: res.data });
+    } catch (error) {
+      // console.error("Error fetching chat media:", error);
+    }
+  },
 
   subscribeToMessages: () => {
     const { selectedUser } = get();
@@ -88,7 +109,8 @@ deleteMessage: async (messageId) => {
     const socket = useAuthStore.getState().socket;
 
     socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
+      const isMessageSentFromSelectedUser =
+        newMessage.senderId === selectedUser._id;
       if (!isMessageSentFromSelectedUser) return;
 
       set({
@@ -110,7 +132,7 @@ deleteMessage: async (messageId) => {
         message._id === messageId
           ? {
               ...message,
-              reactions: [...(message.reactions || []), reaction].slice(0, 5), 
+              reactions: [...(message.reactions || []), reaction].slice(0, 5),
             }
           : message
       ),
