@@ -1,6 +1,5 @@
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
-import Notification from "../models/notification.model.js";
 
 import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
@@ -60,19 +59,10 @@ export const sendMessage = async (req, res) => {
 
     await newMessage.save();
 
-    // Save notification in DB
-    const notification = new Notification({
-      userId: receiverId, // Receiver of the message should get the notification
-      message: `New message from ${req.user.fullName}`,
-    });
-
-    await notification.save();
-
     // Real-time update for receiver
     const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
-      io.to(receiverSocketId).emit("new_notification", notification);
     }
 
     res.status(201).json(newMessage);

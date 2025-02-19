@@ -1,7 +1,6 @@
 import { Server } from "socket.io";
 import http from "http";
 import express from "express";
-import Notification from "../models/notification.model.js"; // Import notification model
 
 const app = express();
 const server = http.createServer(app);
@@ -38,20 +37,6 @@ io.on("connection", (socket) => {
 
   // io.emit() is used to send events to all the connected clients
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
-  // Send notifications when a message is received
-  socket.on("sendNotification", async ({ receiverId, message }) => {
-    try {
-      const notification = new Notification({ userId: receiverId, message });
-      await notification.save();
-
-      const receiverSocketId = getReceiverSocketId(receiverId);
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit("new_notification", notification);
-      }
-    } catch (error) {
-      console.error("Error sending notification:", error);
-    }
-  });
 
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.id);
