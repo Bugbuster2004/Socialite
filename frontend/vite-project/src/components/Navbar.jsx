@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import { useNotificationStore } from "../store/useNotificationStore";
+import { useChatStore } from "../store/useChatStore";
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import {
@@ -10,41 +10,57 @@ import {
   User,
   Bell,
   HelpCircle,
-  CheckCircle,
+  X,
 } from "lucide-react";
 import { Player } from "@lottiefiles/react-lottie-player";
 
+// Initialize socket
 const socket = io(import.meta.env.VITE_BACKEND_URL, {
   query: { userId: useAuthStore.getState().authUser?._id },
 });
 
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
-  const { notifications, fetchNotifications, markAsRead, addNotification } =
-    useNotificationStore();
-  const [isOpen, setIsOpen] = useState(false);
+  const {
+    notifications,
+    setSelectedUser,
+    subscribeToMessages,
+    unsubscribeFromMessages,
+    clearNotifications,
+    hasHydrated,
+    // ✅ FIX: Extract hasHydrated from Zustand store
+  } = useChatStore();
+  const { resetSelectedUser } = useChatStore();
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
-    fetchNotifications(); // Fetch notifications initially
+    console.log("hello i am rese fncn from navabr useffect");
+    resetSelectedUser(); // ✅ Ensures `selectedUser` resets on every page load
+  }, []);
 
-    socket.on("new_notification", (notification) => {
-      console.log("New Notification Received:", notification);
-      addNotification(notification); // Update state in real-time
-    });
+  // ✅ Subscribe only when Zustand has fully rehydrated
+  useEffect(() => {
+    if (hasHydrated) {
+      console.log("✅ Zustand has rehydrated. Subscribing to messages...");
+      subscribeToMessages();
+    }
 
     return () => {
-      socket.off("new_notification");
+      console.log("❌ Unsubscribing from messages...");
+      unsubscribeFromMessages();
     };
-  }, [addNotification]); // Ensure `addNotification` is in the dependency array
+  }, [hasHydrated]); // ✅ FIX: Ensures it runs when Zustand is ready
 
+  console.log(notifications);
   return (
     <header
       className="bg-base-100 border-b border-base-300 fixed w-full top-0 z-40 
-      backdrop-blur-lg bg-base-100/80 shadow-md"
+    backdrop-blur-lg bg-base-100/80 shadow-md"
     >
       <div className="container mx-auto px-4 h-16">
         <div className="flex items-center justify-between h-full">
-          {/* Logo Section */}
+          {/* ✅ Logo Section */}
           <div className="flex items-center gap-8">
             <Link
               to="/"
@@ -62,25 +78,24 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* Navigation Links */}
+          {/* ✅ Navigation Links */}
           <div className="flex items-center gap-4">
-            {/* Messages Button */}
+            {/* ✅ Messages Button */}
             <Link
-              to={"/messages"}
+              to={"/"}
               className="btn btn-sm gap-2 hover:bg-primary/10 transition-all relative group"
             >
               <MessageSquare className="w-5 h-5" />
               <span className="hidden sm:inline">Messages</span>
             </Link>
 
-            {/* Notifications Button */}
+            {/* ✅ Notifications Button */}
             <div className="relative">
               <button
-                onClick={() => setIsOpen(!isOpen)}
                 className="btn btn-sm gap-2 hover:bg-primary/10 transition-all relative group"
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
               >
                 <Bell className="w-5 h-5" />
-                <span className="hidden sm:inline">Notifications</span>
                 {notifications.length > 0 && (
                   <span className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">
                     {notifications.length}
@@ -88,31 +103,52 @@ const Navbar = () => {
                 )}
               </button>
 
-              {/* Notifications Modal */}
-              {isOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-lg max-h-72 overflow-y-auto p-3 z-50">
-                  {notifications.length === 0 ? (
-                    <p className="text-gray-500 text-center">
-                      No new notifications
-                    </p>
-                  ) : (
-                    notifications.map((notification) => (
-                      <div
-                        key={notification._id}
-                        className="flex justify-between items-center p-2 border-b"
-                      >
-                        <p className="text-sm">{notification.message}</p>
-                        <button onClick={() => markAsRead(notification._id)}>
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                        </button>
-                      </div>
-                    ))
+              {/* ✅ Notifications Dropdown */}
+              {isNotifOpen && (
+                <div className="absolute right-0 mt-2 w-60 bg-white shadow-lg rounded-md overflow-hidden z-50">
+                  <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold">Notifications</h2>
+                    <button onClick={() => setIsNotifOpen(false)}>
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <ul className="divide-y divide-gray-200">
+                    {notifications.length === 0 ? (
+                      <li className="px-4 py-3 text-gray-500">
+                        No new messages
+                      </li>
+                    ) : (
+                      notifications.map((notif) => (
+                        <li
+                          key={notif._id}
+                          className="px-4 py-3 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => {
+                            setSelectedUser(notif.senderId);
+                            setIsNotifOpen(false);
+                          }}
+                        >
+                          <span className="text-sm font-medium">
+                            New message from {notif.senderId}
+                          </span>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+
+                  {notifications.length > 0 && (
+                    <button
+                      className="w-full text-center py-2 bg-red-500 text-white"
+                      onClick={clearNotifications}
+                    >
+                      Clear All
+                    </button>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Settings */}
+            {/* ✅ Settings */}
             <Link
               to={"/settings"}
               className="btn btn-sm gap-2 hover:bg-primary/10 transition-all"
@@ -121,36 +157,51 @@ const Navbar = () => {
               <span className="hidden sm:inline">Settings</span>
             </Link>
 
+            {/* ✅ Profile Dropdown */}
             {authUser && (
-              <>
-                {/* Profile Dropdown */}
-                <div className="dropdown dropdown-end">
-                  <label tabIndex={0} className="btn btn-sm gap-2">
-                    <User className="size-5" />
-                    <span className="hidden sm:inline">Profile</span>
-                  </label>
-                  <ul
-                    tabIndex={0}
-                    className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52"
-                  >
-                    <li>
-                      <Link to="/profile">
-                        <User className="w-4 h-4" /> View Profile
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="/help">
-                        <HelpCircle className="w-4 h-4" /> Help Center
-                      </Link>
-                    </li>
-                    <li>
-                      <button onClick={logout}>
-                        <LogOut className="w-4 h-4" /> Logout
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              </>
+              <div className="relative">
+                <button
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="btn btn-sm gap-2 hover:bg-primary/10 transition-all"
+                >
+                  <User className="size-5" />
+                  <span className="hidden sm:inline">{authUser.name}</span>
+                </button>
+
+                {isProfileOpen && (
+                  <div className="absolute right-0 mt-2 w-52 bg-white shadow-lg rounded-md overflow-hidden z-50">
+                    <ul className="divide-y divide-gray-200">
+                      <li>
+                        <Link
+                          to="/profile"
+                          className="flex items-center px-4 py-3 hover:bg-gray-100"
+                        >
+                          <User className="w-4 h-4 mr-2" />
+                          View Profile
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/help"
+                          className="flex items-center px-4 py-3 hover:bg-gray-100"
+                        >
+                          <HelpCircle className="w-4 h-4 mr-2" />
+                          Help Center
+                        </Link>
+                      </li>
+                      <li>
+                        <button
+                          onClick={logout}
+                          className="flex items-center px-4 py-3 w-full text-left hover:bg-gray-100"
+                        >
+                          <LogOut className="w-4 h-4 mr-2" />
+                          Logout
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

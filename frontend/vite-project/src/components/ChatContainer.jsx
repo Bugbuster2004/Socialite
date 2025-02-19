@@ -91,7 +91,7 @@ const ChatContainer = () => {
         senderId: senderId,
       });
       setEditedMessage(messageText); // Prepopulate the edit input with the message text
-      console.log("this is context menu", contextMenu);
+      // console.log("this is context menu", contextMenu);
     }
   };
 
