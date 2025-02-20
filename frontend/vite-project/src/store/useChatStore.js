@@ -11,7 +11,7 @@ export const useChatStore = create(
       chatMedia: [],
       users: [],
       notifications: [],
-      selectedUser: null, // ✅ Always reset on reload
+      selectedUser: null,
       isUsersLoading: false,
       isMessagesLoading: false,
       hasHydrated: false,
@@ -55,7 +55,7 @@ export const useChatStore = create(
 
       // ✅ FIXED: Notifications should now always appear when no chat is selected
       subscribeToMessages: () => {
-        console.log("✅ Subscribing to messages...");
+        // console.log("✅ Subscribing to messages...");
         const socket = useAuthStore.getState().socket;
 
         if (!socket) {
@@ -67,22 +67,22 @@ export const useChatStore = create(
         socket.off("newMessage");
 
         socket.on("newMessage", (newMessage) => {
-          console.log("🔔 New message received:", newMessage);
+          // console.log("🔔 New message received:", newMessage);
 
           let selectedUser = get().selectedUser;
 
           // ✅ If `selectedUser` is undefined (not rehydrated), set it to null
           if (selectedUser === undefined) {
-            console.log("⚠️ selectedUser was undefined, setting to null...");
+            // console.log("⚠️ selectedUser was undefined, setting to null...");
             set({ selectedUser: null });
             selectedUser = null;
           }
 
-          console.log("🔎 Selected user after check:", selectedUser);
+          // console.log("🔎 Selected user after check:", selectedUser);
 
           // ✅ If no chat is selected, ALWAYS show notification
           if (!selectedUser) {
-            console.log("📢 No chat selected, adding notification.");
+            // console.log("📢 No chat selected, adding notification.");
 
             set((state) => ({
               notifications: [...state.notifications, newMessage],
@@ -103,9 +103,9 @@ export const useChatStore = create(
               notifications: [...state.notifications, newMessage],
             }));
           } else {
-            console.log(
-              "💬 Message received in open chat, not adding notification."
-            );
+            // console.log(
+            //   "💬 Message received in open chat, not adding notification."
+            // );
             set({ messages: [...get().messages, newMessage] });
           }
         });
@@ -115,12 +115,12 @@ export const useChatStore = create(
         const socket = useAuthStore.getState().socket;
         if (socket) {
           socket.off("newMessage");
-          console.log("❌ Unsubscribed from messages");
+          // console.log("❌ Unsubscribed from messages");
         }
       },
 
       setSelectedUser: (selectedUser) => {
-        console.log("✅ Selected user changed:", selectedUser);
+        // console.log("✅ Selected user changed:", selectedUser);
         set((state) => ({
           selectedUser,
           notifications: state.notifications.filter(
@@ -132,24 +132,73 @@ export const useChatStore = create(
       clearNotifications: () => {
         set({ notifications: [] });
       },
+      // Delete Message
+      deleteMessage: async (messageId) => {
+        const { messages } = get();
+        try {
+          // Send the delete request to the server
+          await axiosInstance.delete(`/messages/${messageId}`);
 
-      // ✅ FIX: Ensure Zustand properly logs `selectedUser` after reload
+          // Remove the message from the store
+          set({
+            messages: messages.filter((message) => message._id !== messageId),
+          });
+
+          toast.success("Message deleted successfully");
+        } catch (error) {
+          toast.error(error.response.data.message);
+        }
+      },
+      editMessage: async (messageId, updatedText) => {
+        const { messages } = get();
+        try {
+          const res = await axiosInstance.patch(`/messages/${messageId}/edit`, {
+            text: updatedText,
+          });
+
+          set({
+            messages: messages.map((msg) =>
+              msg._id === messageId ? res.data : msg
+            ),
+          });
+
+          toast.success("Message edited successfully");
+        } catch (error) {
+          toast.error(error.response.data.message);
+        }
+      },
+
       setHasHydrated: () => {
-        console.log(
-          "✅ Zustand has rehydrated! Setting `selectedUser` to null..."
-        );
+        // console.log(
+        //   "✅ Zustand has rehydrated! Setting `selectedUser` to null..."
+        // );
         set({ hasHydrated: true, selectedUser: null }); // ✅ Reset `selectedUser`
+      },
+
+      //fetch chat media from the chat
+      fetchChatMedia: async () => {
+        const { selectedUser } = get();
+        if (!selectedUser) return;
+
+        try {
+          const res = await axiosInstance.get(
+            `/messages/media/${selectedUser._id}`
+          );
+          set({ chatMedia: res.data });
+        } catch (error) {
+          console.error("Error fetching chat media:", error);
+        }
       },
 
       // ✅ Force a Zustand re-render on every page reload
       resetSelectedUser: () => {
-        console.log("🔄 Force resetting selectedUser on page load...");
+        // console.log("🔄 Force resetting selectedUser on page load...");
         set({ selectedUser: null });
 
         // ✅ Ensure Zustand updates state properly
         set((state) => ({ ...state }));
 
-        console.log("✅ selectedUser is now:", get().selectedUser);
+        // console.log("✅ selectedUser is now:", get().selectedUser);
       },
     }),
     {
@@ -157,13 +206,13 @@ export const useChatStore = create(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ notifications: state.notifications }),
       onRehydrateStorage: () => (state) => {
-        console.log("🔥 Zustand rehydration triggered.");
+        // console.log("🔥 Zustand rehydration triggered.");
         state.setHasHydrated();
 
         // ✅ Force a refresh after Zustand rehydration
         setTimeout(() => {
           state.resetSelectedUser();
-        }, 50);
+        }, 100);
       },
     }
   )

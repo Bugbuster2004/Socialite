@@ -8,7 +8,6 @@ import { formatMessageTime } from "../lib/utils";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data"; // Emoji data
 import { Smile } from "lucide-react";
-// import { useNotificationStore } from "../store/useNotificationStore";
 
 const ChatContainer = () => {
   const {
@@ -19,14 +18,13 @@ const ChatContainer = () => {
     subscribeToMessages,
     unsubscribeFromMessages,
     addReaction,
-    editMessage, // Edit function from the store
-    deleteMessage, // Delete function from the store
+    editMessage,
+    deleteMessage,
   } = useChatStore();
   const { authUser } = useAuthStore();
-  const messageEndRef = useRef(null);
-  const contextMenuRef = useRef(null); // Add ref for context menu
-  // const { markChatNotificationsAsRead } = useNotificationStore();
 
+  const messageEndRef = useRef(null);
+  const contextMenuRef = useRef(null);
   const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
   const [activeMessageId, setActiveMessageId] = useState(null);
   const [editedMessage, setEditedMessage] = useState("");
@@ -55,7 +53,7 @@ const ChatContainer = () => {
     }
   }, [messages]);
 
-  // Added useEffect to listen for clicks outside of the context menu
+  // Handle clicks outside context menu to close it
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -69,10 +67,7 @@ const ChatContainer = () => {
       }
     };
 
-    // Add event listener on mount
     document.addEventListener("mousedown", handleClickOutside);
-
-    // Cleanup the event listener on unmount
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
@@ -80,39 +75,36 @@ const ChatContainer = () => {
 
   const handleRightClick = (e, messageId, messageText, senderId) => {
     e.preventDefault();
-
-    // Show the context menu only if the clicked message is from the sender (authUser)
+    // Show context menu only if the message belongs to the logged-in user
     if (senderId === authUser._id) {
       setContextMenu({
         visible: true,
         x: e.clientX,
         y: e.clientY,
-        messageId: messageId,
-        senderId: senderId,
+        messageId,
+        senderId,
       });
-      setEditedMessage(messageText); // Prepopulate the edit input with the message text
-      // console.log("this is context menu", contextMenu);
+      setEditedMessage(messageText);
     }
   };
 
   const handleEditMessage = () => {
     if (editedMessage.trim() === "") return;
-
-    editMessage(contextMenu.messageId, editedMessage); // Call the store's edit function
-    setEditedMessage(""); // Clear edited message
+    editMessage(contextMenu.messageId, editedMessage);
+    setEditedMessage("");
     setContextMenu({ ...contextMenu, visible: false });
-    setActiveMessageId(null); // Close the input field after saving
+    setActiveMessageId(null);
   };
 
   const handleDeleteMessage = () => {
-    deleteMessage(contextMenu.messageId); // Call the store's delete function
+    deleteMessage(contextMenu.messageId);
     setContextMenu({ ...contextMenu, visible: false });
   };
 
   const handleCancelEdit = () => {
-    setEditedMessage(""); // Clear edited message
+    setEditedMessage("");
     setContextMenu({ ...contextMenu, visible: false });
-    setActiveMessageId(null); // Close the input field without saving
+    setActiveMessageId(null);
   };
 
   if (isMessagesLoading) {
@@ -139,7 +131,7 @@ const ChatContainer = () => {
             ref={messageEndRef}
             onContextMenu={(e) =>
               handleRightClick(e, message._id, message.text, message.senderId)
-            } // Pass senderId here
+            }
           >
             <div className="chat-image avatar">
               <div className="size-10 rounded-full border">
@@ -160,26 +152,34 @@ const ChatContainer = () => {
             </div>
 
             <div className="chat-bubble flex flex-col">
-              {/* Conditionally render edit input if in editing mode */}
+              {/* Edit Mode */}
               {activeMessageId === message._id ? (
                 <div className="flex flex-col">
                   <input
                     type="text"
                     value={editedMessage}
                     onChange={(e) => setEditedMessage(e.target.value)}
-                    onBlur={handleEditMessage}
-                    onKeyDown={(e) => e.key === "Enter" && handleEditMessage()} // Save on Enter
-                    className="border p-2 rounded mb-2"
+                    onKeyDown={(e) => e.key === "Enter" && handleEditMessage()}
+                    className="border p-2 rounded mb-2 bg-gray-200 text-black"
                   />
-                  <button
-                    onClick={handleCancelEdit}
-                    className="text-sm text-gray-500"
-                  >
-                    Cancel
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleEditMessage}
+                      className="btn btn-sm btn-primary"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="btn btn-sm btn-secondary"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <>
+                  {/* Normal Message View */}
                   {message.image && (
                     <img
                       src={message.image}
@@ -237,16 +237,16 @@ const ChatContainer = () => {
         {/* Context Menu for Edit and Delete */}
         {contextMenu.visible && (
           <div
-            ref={contextMenuRef} // Reference added to context menu
+            ref={contextMenuRef}
             style={{ left: contextMenu.x, top: contextMenu.y }}
             className="absolute bg-white border rounded shadow-md p-2 space-y-2 z-50"
           >
             <button
               onClick={() => {
-                setActiveMessageId(contextMenu.messageId); // Set message ID for editing
+                setActiveMessageId(contextMenu.messageId);
                 setEditedMessage(
                   messages.find((msg) => msg._id === contextMenu.messageId).text
-                ); // Prepopulate input
+                );
               }}
               className="w-full text-left text-sm text-blue-600"
             >

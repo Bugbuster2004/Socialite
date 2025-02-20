@@ -1,4 +1,3 @@
-//this is navbar
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
@@ -11,7 +10,6 @@ import {
   User,
   Bell,
   HelpCircle,
-  X,
 } from "lucide-react";
 import { Player } from "@lottiefiles/react-lottie-player";
 
@@ -29,39 +27,33 @@ const Navbar = () => {
     unsubscribeFromMessages,
     clearNotifications,
     hasHydrated,
-    // ✅ FIX: Extract hasHydrated from Zustand store
+    users,
   } = useChatStore();
   const { resetSelectedUser } = useChatStore();
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  // Reset selected user on initial load
   useEffect(() => {
-    console.log("hello i am rese fncn from navabr useffect");
-    resetSelectedUser(); // ✅ Ensures `selectedUser` resets on every page load
+    console.log("Resetting selectedUser on Navbar mount");
+    resetSelectedUser();
   }, []);
 
-  // ✅ Subscribe only when Zustand has fully rehydrated
+  // Subscribe to messages after Zustand rehydrates
   useEffect(() => {
-    if (hasHydrated) {
-      console.log("✅ Zustand has rehydrated. Subscribing to messages...");
-      subscribeToMessages();
-    }
-
+    if (!hasHydrated) return;
+    console.log("✅ Zustand has rehydrated. Subscribing to messages...");
+    subscribeToMessages();
     return () => {
       console.log("❌ Unsubscribing from messages...");
       unsubscribeFromMessages();
     };
-  }, [hasHydrated]); // ✅ FIX: Ensures it runs when Zustand is ready
+  }, [hasHydrated]);
 
-  console.log(notifications);
   return (
-    <header
-      className="bg-base-100 border-b border-base-300 fixed w-full top-0 z-40 
-    backdrop-blur-lg bg-base-100/80 shadow-md"
-    >
+    <header className="bg-base-100 border-b border-base-300 fixed w-full top-0 z-40 backdrop-blur-lg bg-base-100/80 shadow-md">
       <div className="container mx-auto px-4 h-16">
         <div className="flex items-center justify-between h-full">
-          {/* ✅ Logo Section */}
+          {/* Logo Section */}
           <div className="flex items-center gap-8">
             <Link
               to="/"
@@ -79,86 +71,87 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* ✅ Navigation Links */}
+          {/* Navigation Links */}
           <div className="flex items-center gap-4">
-            {/* ✅ Messages Button */}
+            {/* Messages Button */}
             <Link
-              to={"/"}
+              to="/"
               className="btn btn-sm gap-2 hover:bg-primary/10 transition-all relative group"
             >
               <MessageSquare className="w-5 h-5" />
               <span className="hidden sm:inline">Messages</span>
             </Link>
 
-            {/* ✅ Notifications Button */}
-            <div className="relative">
-              <button
-                className="btn btn-sm gap-2 hover:bg-primary/10 transition-all relative group"
-                onClick={() => setIsNotifOpen(!isNotifOpen)}
-              >
+            {/* Notifications Dropdown using DaisyUI */}
+            <details className="dropdown dropdown-end relative">
+              <summary className="btn btn-sm gap-2 hover:bg-primary/10 transition-all">
                 <Bell className="w-5 h-5" />
                 {notifications.length > 0 && (
-                  <span className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">
+                  <span className="badge badge-sm indicator-item">
                     {notifications.length}
                   </span>
                 )}
-              </button>
+              </summary>
 
-              {/* ✅ Notifications Dropdown */}
-              {isNotifOpen && (
-                <div className="absolute right-0 mt-2 w-60 bg-white shadow-lg rounded-md overflow-hidden z-50">
-                  <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold">Notifications</h2>
-                    <button onClick={() => setIsNotifOpen(false)}>
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
+              {/* Dropdown Content */}
+              <div className="dropdown-content bg-base-100 rounded-box w-60 p-2 shadow max-h-24 overflow-y-auto overflow-x-hidden">
+                <h2 className="text-lg font-semibold px-4 py-2">
+                  Notifications
+                </h2>
 
-                  <ul className="divide-y divide-gray-200">
-                    {notifications.length === 0 ? (
-                      <li className="px-4 py-3 text-gray-500">
-                        No new messages
-                      </li>
-                    ) : (
-                      notifications.map((notif) => (
+                <ul className="flex flex-col gap-1">
+                  {notifications.length === 0 ? (
+                    <li className="px-4 py-3 text-gray-500">No new messages</li>
+                  ) : (
+                    notifications.map((notif) => {
+                      const foundUser = users.find(
+                        (u) => u._id === notif.senderId
+                      );
+
+                      const displayName = foundUser
+                        ? foundUser.fullName
+                        : notif.senderId;
+
+                      return (
                         <li
                           key={notif._id}
-                          className="px-4 py-3 hover:bg-gray-100 cursor-pointer"
-                          onClick={() => {
-                            setSelectedUser(notif.senderId);
-                            setIsNotifOpen(false);
-                          }}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer rounded-md"
+                          onClick={() => setSelectedUser(notif.senderId)}
                         >
                           <span className="text-sm font-medium">
-                            New message from {notif.senderId}
+                            New message from{" "}
+                            <strong>
+                              <i>{displayName}</i>{" "}
+                            </strong>
                           </span>
                         </li>
-                      ))
-                    )}
-                  </ul>
-
-                  {notifications.length > 0 && (
-                    <button
-                      className="w-full text-center py-2 bg-red-500 text-white"
-                      onClick={clearNotifications}
-                    >
-                      Clear All
-                    </button>
+                      );
+                    })
                   )}
-                </div>
-              )}
-            </div>
+                </ul>
 
-            {/* ✅ Settings */}
+                {/* Clear All Button */}
+                {notifications.length > 0 && (
+                  <button
+                    className="btn btn-xs btn-error w-full mt-2"
+                    onClick={clearNotifications}
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+            </details>
+
+            {/* Settings */}
             <Link
-              to={"/settings"}
+              to="/settings"
               className="btn btn-sm gap-2 hover:bg-primary/10 transition-all"
             >
               <Settings className="w-4 h-4" />
               <span className="hidden sm:inline">Settings</span>
             </Link>
 
-            {/* ✅ Profile Dropdown */}
+            {/* Profile Dropdown */}
             {authUser && (
               <div className="relative">
                 <button
@@ -166,9 +159,8 @@ const Navbar = () => {
                   className="btn btn-sm gap-2 hover:bg-primary/10 transition-all"
                 >
                   <User className="size-5" />
-                  <span className="hidden sm:inline">{authUser.name}</span>
+                  <span className="hidden sm:inline">Profile</span>
                 </button>
-
                 {isProfileOpen && (
                   <div className="absolute right-0 mt-2 w-52 bg-white shadow-lg rounded-md overflow-hidden z-50">
                     <ul className="divide-y divide-gray-200">

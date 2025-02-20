@@ -2,7 +2,7 @@ import { useState } from "react";
 import ChatMediaModal from "./ChatMediaModal";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-// import { selectedUser } from "../store/useChatStore.js";
+import { X } from "lucide-react"; // Import X icon
 
 const ChatHeader = () => {
   const { selectedUser, setSelectedUser } = useChatStore();
@@ -43,6 +43,12 @@ const ChatHeader = () => {
             </p>
           </div>
         </div>
+        <button
+          className="text-gray-600 hover:text-gray-900 transition"
+          onClick={() => setSelectedUser(null)} // Reset to no chat selected
+        >
+          <X className="w-6 h-6" />
+        </button>
       </div>
 
       {/* Media Modal */}
