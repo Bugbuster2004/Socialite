@@ -12,49 +12,17 @@ Socialite is a real-time chat application built using WebSockets, providing seam
 
 ## Features
 
-### ✅ One-on-one chat
-
-![One-on-one chat](public/images/chat-ui.png)
-
-### ✏️ Edit messages
-
-![Edit messages](public/images/edit.png)
-
-### ❌ Delete messages
-
-![Delete messages](public/images/edit1.png)
-
-### 🔑 User authentication (Login & Logout)
-
-![User authentication](public/images/login.png)
-
-### 🆕 Create a new account
-
-![Create a new account](public/images/newacc.png)
-
-### 📂 Check shared media
-
-![Check shared media](public/images/media.png)
-
-### 🔔 Real-time notifications
-
-![Real-time notifications](public/images/notif.png)
-
-### 📤 Upload media in chat
-
-![Upload media](public/images/media.png)
-
-### 😀 Emoji support
-
-![Emoji support](public/images/emoji.png)
-
-### 👤 Profile update functionality
-
-![Profile update](public/images/profile.png)
-
-### 🌗 Theme switcher (Dark/Light mode)
-
-![Theme switcher](public/vite.svg)
+- ✅ **One-on-one chat**
+- ✏️ **Edit messages**
+- ❌ **Delete messages**
+- 🔑 **User authentication (Login & Logout)**
+- 🆕 **Create a new account**
+- 📂 **Check shared media**
+- 🔔 **Real-time notifications**
+- 📤 **Upload media in chat**
+- 😀 **Emoji support**
+- 👤 **Profile update functionality**
+- 🌗 **Theme switcher (Dark/Light mode)**
 
 ## Future Updates
 
